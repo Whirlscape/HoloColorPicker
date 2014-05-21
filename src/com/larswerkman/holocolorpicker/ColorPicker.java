@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Lars Werkman
+` * Copyright 2012 Lars Werkman
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ public class ColorPicker extends View {
 	 * </p>
 	 */
 	private static final int[] COLORS = new int[] { 0xFFFF0000, 0xFFFF00FF,
-			0xFF0000FF, 0xFF00FFFF, 0xFF00FF00, 0xFFFFFF00, 0xFFFF0000 };
+		0xFF0000FF, 0xFF00FFFF, 0xFF00FF00, 0xFFFFFF00, 0xFFFF0000 };
 
 	/**
 	 * {@code Paint} instance used to draw the color wheel.
@@ -136,7 +136,7 @@ public class ColorPicker extends View {
 	 * The ARGB value of the center with the old selected color.
 	 */
 	private int mCenterOldColor;
-	
+
 	/**
 	 * Whether to show the old color in the center or not.
 	 */
@@ -164,16 +164,16 @@ public class ColorPicker extends View {
 	 * @see #onDraw(Canvas)
 	 */
 	private float mTranslationOffset;
-	
+
 	/**
 	 * Distance between pointer and user touch in X-direction.
 	 */
-    	private float mSlopX;
-    
+	private float mSlopX;
+
 	/**
 	 * Distance between pointer and user touch in Y-direction.
 	 */
-    	private float mSlopY;
+	private float mSlopY;
 
 	/**
 	 * The pointer's position expressed as angle (in rad).
@@ -233,6 +233,9 @@ public class ColorPicker extends View {
 	 * {@code onColorSelectedListener} instance of the onColorSelectedListener
 	 */
 	private OnColorSelectedListener onColorSelectedListener;
+
+	private boolean isEnabled = true;
+	private float desaturateFactor = 0.2f;
 
 	public ColorPicker(Context context) {
 		super(context);
@@ -304,12 +307,12 @@ public class ColorPicker extends View {
 	public OnColorSelectedListener getOnColorSelectedListener() {
 		return this.onColorSelectedListener;
 	}
-	
+
 	/**
 	 * Color of the latest entry of the onColorChangedListener.
 	 */
 	private int oldChangedListenerColor;
-	
+
 	/**
 	 * Color of the latest entry of the onColorSelectedListener.
 	 */
@@ -371,10 +374,10 @@ public class ColorPicker extends View {
 		mCenterHaloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		mCenterHaloPaint.setColor(Color.BLACK);
 		mCenterHaloPaint.setAlpha(0x00);
-		
+
 		mCenterNewColor = calculateColor(mAngle);
 		mCenterOldColor = calculateColor(mAngle);
-		mShowCenterOldColor = true;
+		mShowCenterOldColor = false;
 	}
 
 	@Override
@@ -384,7 +387,7 @@ public class ColorPicker extends View {
 		// them we let Canvas do the work for us.
 		canvas.translate(mTranslationOffset, mTranslationOffset);
 
-		// Draw the color wheel.
+		// Draw the color wheel
 		canvas.drawOval(mColorWheelRectangle, mColorWheelPaint);
 
 		float[] pointerPosition = calculatePointerPosition(mAngle);
@@ -400,7 +403,7 @@ public class ColorPicker extends View {
 
 		// Draw the halo of the center colors.
 		canvas.drawCircle(0, 0, mColorCenterHaloRadius, mCenterHaloPaint);
-		
+
 		if (mShowCenterOldColor) {
 			// Draw the old selected color in the center.
 			canvas.drawArc(mCenterRectangle, 90, 180, true, mCenterOldPaint);
@@ -579,10 +582,21 @@ public class ColorPicker extends View {
 	private float colorToAngle(int color) {
 		float[] colors = new float[3];
 		Color.colorToHSV(color, colors);
-		
+
 		return (float) Math.toRadians(-colors[0]);
 	}
-	
+
+	private int[] desaturateColor(int[] color) {
+		int[] desaturatedColor = new int[color.length];
+		for (int i = 0; i < color.length; i ++){
+			float[] colorHsv = new float[3];
+			Color.colorToHSV(color[i], colorHsv);
+			colorHsv[1] = desaturateFactor;
+			desaturatedColor[i] = Color.HSVToColor(colorHsv);
+		}
+		return desaturatedColor;
+	}
+
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
 		getParent().requestDisallowInterceptTouchEvent(true);
@@ -602,15 +616,60 @@ public class ColorPicker extends View {
 				mSlopX = x - pointerPosition[0];
 				mSlopY = y - pointerPosition[1];
 				mUserIsMovingPointer = true;
+
+				//Enable wheel upon touch
+				if (!isEnabled){
+					isEnabled = true;
+					Shader s = new SweepGradient(0, 0, COLORS, null);	
+					mColorWheelPaint.setShader(s);
+				}
+
 				invalidate();
 			}
 			// Check whether the user pressed on the center.
 			else if (x >= -mColorCenterRadius && x <= mColorCenterRadius
-					&& y >= -mColorCenterRadius && y <= mColorCenterRadius
-					&& mShowCenterOldColor) {
+					&& y >= -mColorCenterRadius && y <= mColorCenterRadius) {
+
 				mCenterHaloPaint.setAlpha(0x50);
-				setColor(getOldCenterColor());
+
+				//Original code for setting color
+				//setColor(getOldCenterColor());
+
+				//New code to disable or enable wheel
+				isEnabled = !isEnabled;
+				Shader s;
+				if (isEnabled){
+					s = new SweepGradient(0, 0, COLORS, null);	
+				}
+				else{
+					s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
+				}
+				mColorWheelPaint.setShader(s);
+
 				invalidate();
+			}
+			// Handle click on the wheel
+			else if(x >= -mColorWheelRadius && x <= mColorWheelRadius
+					&& y >= -mColorWheelRadius && y <= mColorWheelRadius){
+
+				//Enable wheel upon touch
+				if (!isEnabled){
+					isEnabled = true;
+					Shader s = new SweepGradient(0, 0, COLORS, null);	
+					mColorWheelPaint.setShader(s);
+				}
+
+				mAngle = (float) java.lang.Math.atan2(y, x);
+				pointerPosition = calculatePointerPosition(mAngle);
+
+				mSlopX = x - pointerPosition[0];
+				mSlopY = y - pointerPosition[1];
+				mUserIsMovingPointer = true;
+
+				mPointerColor.setColor(calculateColor(mAngle));
+
+				setNewCenterColor(mCenterNewColor = calculateColor(mAngle));
+				invalidate();		
 			}
 			// If user did not press pointer or center, report event not handled
 			else{
@@ -624,7 +683,7 @@ public class ColorPicker extends View {
 				mPointerColor.setColor(calculateColor(mAngle));
 
 				setNewCenterColor(mCenterNewColor = calculateColor(mAngle));
-				
+
 				if (mOpacityBar != null) {
 					mOpacityBar.setColor(mColor);
 				}
@@ -652,7 +711,7 @@ public class ColorPicker extends View {
 		case MotionEvent.ACTION_UP:
 			mUserIsMovingPointer = false;
 			mCenterHaloPaint.setAlpha(0x00);
-			
+
 			if (onColorSelectedListener != null && mCenterNewColor != oldSelectedListenerColor) {
 				onColorSelectedListener.onColorSelected(mCenterNewColor);
 				oldSelectedListenerColor = mCenterNewColor;
@@ -760,7 +819,7 @@ public class ColorPicker extends View {
 	public int getOldCenterColor() {
 		return mCenterOldColor;
 	}
-	
+
 	/**
 	 * Set whether the old color is to be shown in the center or not
 	 * 
@@ -770,7 +829,7 @@ public class ColorPicker extends View {
 		mShowCenterOldColor = show;
 		invalidate();
 	}
-	
+
 	public boolean getShowOldCenterColor() {
 		return mShowCenterOldColor;
 	}
@@ -811,7 +870,7 @@ public class ColorPicker extends View {
 			mValueBar.setColor(color);
 		}
 	}
-	
+
 	/**
 	 * Checks if there is an {@code OpacityBar} connected.
 	 * 
@@ -820,7 +879,7 @@ public class ColorPicker extends View {
 	public boolean hasOpacityBar(){
 		return mOpacityBar != null;
 	}
-	
+
 	/**
 	 * Checks if there is a {@code ValueBar} connected.
 	 * 
@@ -829,7 +888,7 @@ public class ColorPicker extends View {
 	public boolean hasValueBar(){
 		return mValueBar != null;
 	}
-	
+
 	/**
 	 * Checks if there is a {@code SaturationBar} connected.
 	 * 
@@ -838,7 +897,7 @@ public class ColorPicker extends View {
 	public boolean hasSaturationBar(){
 		return mSaturationBar != null;
 	}
-	
+
 	/**
 	 * Checks if there is a {@code SVBar} connected.
 	 * 
