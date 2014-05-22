@@ -19,6 +19,7 @@ package com.larswerkman.holocolorpicker;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -235,7 +236,15 @@ public class ColorPicker extends View {
 	private OnColorSelectedListener onColorSelectedListener;
 
 	private boolean isEnabled = true;
+
 	private float desaturateFactor = 0.2f;
+
+	private float valueFactor = 1.0f;
+
+	private Bitmap centerImageOn = null;	
+	private Bitmap centerImageOff = null;
+	
+	private Paint bitmapPaint;
 
 	public ColorPicker(Context context) {
 		super(context);
@@ -374,6 +383,11 @@ public class ColorPicker extends View {
 		mCenterHaloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		mCenterHaloPaint.setColor(Color.BLACK);
 		mCenterHaloPaint.setAlpha(0x00);
+		
+		bitmapPaint = new Paint();
+		bitmapPaint.setAntiAlias(true);
+		bitmapPaint.setFilterBitmap(true);
+		bitmapPaint.setDither(true);
 
 		mCenterNewColor = calculateColor(mAngle);
 		mCenterOldColor = calculateColor(mAngle);
@@ -414,6 +428,13 @@ public class ColorPicker extends View {
 		else {
 			// Draw the new selected color in the center.
 			canvas.drawArc(mCenterRectangle, 0, 360, true, mCenterNewPaint);
+		}
+		//Draw center image
+		if (isEnabled && centerImageOn != null){
+			canvas.drawBitmap(centerImageOn, null, mCenterRectangle, bitmapPaint);
+		}
+		else if (!isEnabled && centerImageOff != null){
+			canvas.drawBitmap(centerImageOff, null, mCenterRectangle, bitmapPaint);
 		}
 	}
 
@@ -592,6 +613,7 @@ public class ColorPicker extends View {
 			float[] colorHsv = new float[3];
 			Color.colorToHSV(color[i], colorHsv);
 			colorHsv[1] = desaturateFactor;
+			colorHsv[2] = valueFactor;
 			desaturatedColor[i] = Color.HSVToColor(colorHsv);
 		}
 		return desaturatedColor;
@@ -632,21 +654,7 @@ public class ColorPicker extends View {
 
 				mCenterHaloPaint.setAlpha(0x50);
 
-				//Original code for setting color
-				//setColor(getOldCenterColor());
-
-				//New code to disable or enable wheel
-				isEnabled = !isEnabled;
-				Shader s;
-				if (isEnabled){
-					s = new SweepGradient(0, 0, COLORS, null);	
-				}
-				else{
-					s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
-				}
-				mColorWheelPaint.setShader(s);
-
-				invalidate();
+				changeStatus();
 			}
 			// Handle click on the wheel
 			else if(x >= -mColorWheelRadius && x <= mColorWheelRadius
@@ -666,9 +674,11 @@ public class ColorPicker extends View {
 				mSlopY = y - pointerPosition[1];
 				mUserIsMovingPointer = true;
 
-				mPointerColor.setColor(calculateColor(mAngle));
+				int currentColor = calculateColor(mAngle);
 
-				setNewCenterColor(mCenterNewColor = calculateColor(mAngle));
+				mPointerColor.setColor(currentColor);
+				setCurrentColor(currentColor);
+
 				invalidate();		
 			}
 			// If user did not press pointer or center, report event not handled
@@ -680,9 +690,13 @@ public class ColorPicker extends View {
 		case MotionEvent.ACTION_MOVE:
 			if (mUserIsMovingPointer) {
 				mAngle = (float) java.lang.Math.atan2(y - mSlopY, x - mSlopX);
-				mPointerColor.setColor(calculateColor(mAngle));
 
-				setNewCenterColor(mCenterNewColor = calculateColor(mAngle));
+				int currentColor = calculateColor(mAngle);
+
+				mPointerColor.setColor(currentColor);
+				setCurrentColor(currentColor);
+
+				invalidate();	
 
 				if (mOpacityBar != null) {
 					mOpacityBar.setColor(mColor);
@@ -784,6 +798,49 @@ public class ColorPicker extends View {
 		mValueBar.setColor(mColor);
 	}
 
+	public void setDesaturateFactor(float f){
+		desaturateFactor = f;
+		if (!isEnabled){
+			Shader s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
+			mColorWheelPaint.setShader(s);
+			invalidate();
+		}
+	}
+	public void setValueFactor(float f){
+		valueFactor = f;
+		if (!isEnabled){
+			Shader s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
+			mColorWheelPaint.setShader(s);
+			invalidate();
+		}
+	}
+	public void setCenterImageOn(Bitmap b){
+		centerImageOn = b;
+	}
+	public void setCenterImageOff(Bitmap b){
+		centerImageOff = b;
+	}
+	public void changeStatus(){
+		//Disable or enable wheel
+		isEnabled = !isEnabled;
+		Shader s;
+		if (isEnabled){
+			s = new SweepGradient(0, 0, COLORS, null);
+
+			int currentColor = calculateColor(mAngle);
+
+			mPointerColor.setColor(currentColor);
+			setCurrentColor(currentColor);
+		}
+		else{
+			s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
+			mPointerColor.setColor(mCenterNewColor);
+			setCurrentColor(mCenterNewColor);
+		}
+		mColorWheelPaint.setShader(s);
+
+		invalidate();
+	}
 	/**
 	 * Change the color of the center which indicates the new color.
 	 * 
@@ -797,7 +854,14 @@ public class ColorPicker extends View {
 			mCenterOldColor = color;
 			mCenterOldPaint.setColor(color);
 		}
-		if (onColorChangedListener != null && color != oldChangedListenerColor ) {
+		if (onColorChangedListener != null && color != oldChangedListenerColor) {
+			onColorChangedListener.onColorChanged(color);
+			oldChangedListenerColor  = color;
+		}
+		invalidate();
+	}
+	public void setCurrentColor(int color){
+		if (onColorChangedListener != null && color != oldChangedListenerColor) {
 			onColorChangedListener.onColorChanged(color);
 			oldChangedListenerColor  = color;
 		}
