@@ -650,6 +650,13 @@ public class ColorPicker extends View {
 		}
 		return adjustedColors;
 	}
+	
+	private int setValue(int color, float value) {
+		float[] colorHsv = new float[3];
+		Color.colorToHSV(color, colorHsv);
+		colorHsv[2] = value;
+		return Color.HSVToColor(colorHsv);
+	}
 
 	@Override
 	public boolean onTouchEvent(MotionEvent event) {
@@ -877,6 +884,12 @@ public class ColorPicker extends View {
 		mColorWheelPaint.setShader(s);
 		invalidate();
 	}
+	
+	public void setCenterValue(float value){
+		mCenterNewColor = setValue(mCenterNewColor, value);
+		mCenterNewPaint.setColor(mCenterNewColor);
+	}
+
 
 	/**
 	 * Change the color of the center which indicates the new color.
