@@ -235,6 +235,8 @@ public class ColorPicker extends View {
 	 */
 	private OnColorSelectedListener onColorSelectedListener;
 
+	private OnEnabledListener onEnabledListener;
+
 	private boolean mIsEnabled = true;
 
 	private float mSaturateFactor = 1.0f;
@@ -280,6 +282,10 @@ public class ColorPicker extends View {
 		public void onColorSelected(int color);
 	}
 
+	public interface OnEnabledListener {
+		public void onEnabled(boolean enabled);
+	}
+
 	/**
 	 * Set a onColorChangedListener
 	 * 
@@ -314,6 +320,14 @@ public class ColorPicker extends View {
 	 */
 	public OnColorSelectedListener getOnColorSelectedListener() {
 		return this.onColorSelectedListener;
+	}
+
+	public void setOnEnabledListener(OnEnabledListener listener) {
+		this.onEnabledListener = listener;
+	}
+
+	public OnEnabledListener getOnEnabledListener() {
+		return this.onEnabledListener;
 	}
 
 	/**
@@ -502,25 +516,23 @@ public class ColorPicker extends View {
 
 		if (unit <= 0) {
 			mColor = COLORS[0];
-			return COLORS[0];
-		}
-		if (unit >= 1) {
+		} else if (unit >= 1) {
 			mColor = COLORS[COLORS.length - 1];
-			return COLORS[COLORS.length - 1];
+		} else {
+
+			float p = unit * (COLORS.length - 1);
+			int i = (int) p;
+			p -= i;
+
+			int c0 = COLORS[i];
+			int c1 = COLORS[i + 1];
+			int a = ave(Color.alpha(c0), Color.alpha(c1), p);
+			int r = ave(Color.red(c0), Color.red(c1), p);
+			int g = ave(Color.green(c0), Color.green(c1), p);
+			int b = ave(Color.blue(c0), Color.blue(c1), p);
+
+			mColor = Color.argb(a, r, g, b);
 		}
-
-		float p = unit * (COLORS.length - 1);
-		int i = (int) p;
-		p -= i;
-
-		int c0 = COLORS[i];
-		int c1 = COLORS[i + 1];
-		int a = ave(Color.alpha(c0), Color.alpha(c1), p);
-		int r = ave(Color.red(c0), Color.red(c1), p);
-		int g = ave(Color.green(c0), Color.green(c1), p);
-		int b = ave(Color.blue(c0), Color.blue(c1), p);
-
-		mColor = Color.argb(a, r, g, b);
 
 		float[] colorHSV = new float[3];
 		Color.colorToHSV(mColor, colorHSV);
@@ -537,7 +549,8 @@ public class ColorPicker extends View {
 	 * @return The ARGB value of the currently selected color.
 	 */
 	public int getColor() {
-		return mCenterNewColor;
+		if (mIsEnabled) return calculateColor(mAngle);
+		else return mCenterNewColor;
 	}
 
 	/**
@@ -846,6 +859,12 @@ public class ColorPicker extends View {
 		} else {
 			setCurrentColor(mCenterNewColor);
 		}
+
+		if (onEnabledListener != null) onEnabledListener.onEnabled(enabled);
+	}
+
+	public boolean isEnabled() {
+		return mIsEnabled;
 	}
 
 	void updateColorPicker() {
