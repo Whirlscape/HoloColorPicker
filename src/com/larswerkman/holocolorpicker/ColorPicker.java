@@ -571,10 +571,8 @@ public class ColorPicker extends View {
 			int currentColor = calculateColor(mAngle);
 
 			mPointerColor.setColor(currentColor);
-			mCenterNewPaint.setColor(currentColor);
 		} else {
 			mPointerColor.setColor(mCenterNewColor);
-			mCenterNewPaint.setColor(mCenterNewColor);
 		}
 		
 		// check of the instance isn't null
@@ -639,13 +637,8 @@ public class ColorPicker extends View {
 		for (int i = 0; i < color.length; i ++){
 			float[] colorHsv = new float[3];
 			Color.colorToHSV(color[i], colorHsv);
-			if (mIsEnabled) {
 				colorHsv[1] = mSaturateFactor;
 				colorHsv[2] = mValueFactor;
-			} else {
-				colorHsv[1] = 0;
-				colorHsv[2] = 0;
-			}
 			adjustedColors[i] = Color.HSVToColor(colorHsv);
 		}
 		return adjustedColors;
@@ -701,7 +694,6 @@ public class ColorPicker extends View {
 				int currentColor = calculateColor(mAngle);
 
 				mPointerColor.setColor(currentColor);
-				mCenterNewPaint.setColor(currentColor);
 
 				setCurrentColor(currentColor);
 
@@ -720,7 +712,6 @@ public class ColorPicker extends View {
 				int currentColor = calculateColor(mAngle);
 
 				mPointerColor.setColor(currentColor);
-				mCenterNewPaint.setColor(currentColor);
 
 				setCurrentColor(currentColor);
 
@@ -872,10 +863,8 @@ public class ColorPicker extends View {
 			int currentColor = calculateColor(mAngle);
 
 			mPointerColor.setColor(currentColor);
-			mCenterNewPaint.setColor(currentColor);
 		} else {
 			mPointerColor.setColor(mCenterNewColor);
-			mCenterNewPaint.setColor(mCenterNewColor);
 		}
 		Shader s = new SweepGradient(0, 0, hsvAdjustColors(COLORS), null);
 		mColorWheelPaint.setShader(s);
