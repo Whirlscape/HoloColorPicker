@@ -235,16 +235,15 @@ public class ColorPicker extends View {
 	 */
 	private OnColorSelectedListener onColorSelectedListener;
 
-	private boolean isEnabled = true;
+	private boolean mIsEnabled = true;
 
-	private float desaturateFactor = 0.2f;
+	private float mSaturateFactor = 1.0f;
+	private float mValueFactor = 1.0f;
 
-	private float valueFactor = 1.0f;
-
-	private Bitmap centerImageOn = null;	
-	private Bitmap centerImageOff = null;
+	private Bitmap mCenterImageOn = null;	
+	private Bitmap mCenterImageOff = null;
 	
-	private Paint bitmapPaint;
+	private Paint mBitmapPaint;
 
 	public ColorPicker(Context context) {
 		super(context);
@@ -358,7 +357,7 @@ public class ColorPicker extends View {
 
 		mAngle = (float) (-Math.PI / 2);
 
-		Shader s = new SweepGradient(0, 0, COLORS, null);
+		Shader s = new SweepGradient(0, 0, hsvAdjustColors(COLORS), null);
 
 		mColorWheelPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		mColorWheelPaint.setShader(s);
@@ -384,10 +383,10 @@ public class ColorPicker extends View {
 		mCenterHaloPaint.setColor(Color.BLACK);
 		mCenterHaloPaint.setAlpha(0x00);
 		
-		bitmapPaint = new Paint();
-		bitmapPaint.setAntiAlias(true);
-		bitmapPaint.setFilterBitmap(true);
-		bitmapPaint.setDither(true);
+		mBitmapPaint = new Paint();
+		mBitmapPaint.setAntiAlias(true);
+		mBitmapPaint.setFilterBitmap(true);
+		mBitmapPaint.setDither(true);
 
 		mCenterNewColor = calculateColor(mAngle);
 		mCenterOldColor = calculateColor(mAngle);
@@ -429,12 +428,13 @@ public class ColorPicker extends View {
 			// Draw the new selected color in the center.
 			canvas.drawArc(mCenterRectangle, 0, 360, true, mCenterNewPaint);
 		}
+
 		//Draw center image
-		if (isEnabled && centerImageOn != null){
-			canvas.drawBitmap(centerImageOn, null, mCenterRectangle, bitmapPaint);
+		if (mIsEnabled && mCenterImageOn != null){
+			canvas.drawBitmap(mCenterImageOn, null, mCenterRectangle, mBitmapPaint);
 		}
-		else if (!isEnabled && centerImageOff != null){
-			canvas.drawBitmap(centerImageOff, null, mCenterRectangle, bitmapPaint);
+		else if (!mIsEnabled && mCenterImageOff != null){
+			canvas.drawBitmap(mCenterImageOff, null, mCenterRectangle, mBitmapPaint);
 		}
 	}
 
@@ -521,7 +521,14 @@ public class ColorPicker extends View {
 		int b = ave(Color.blue(c0), Color.blue(c1), p);
 
 		mColor = Color.argb(a, r, g, b);
-		return Color.argb(a, r, g, b);
+
+		float[] colorHSV = new float[3];
+		Color.colorToHSV(mColor, colorHSV);
+		colorHSV[1] = mSaturateFactor;
+		colorHSV[2] = mValueFactor;
+		mColor = Color.HSVToColor(colorHSV);
+
+		return mColor;
 	}
 
 	/**
@@ -547,9 +554,16 @@ public class ColorPicker extends View {
 	 */
 	public void setColor(int color) {
 		mAngle = colorToAngle(color);
-		mPointerColor.setColor(calculateColor(mAngle));
-		mCenterNewPaint.setColor(calculateColor(mAngle));
+		if (mIsEnabled){
+			int currentColor = calculateColor(mAngle);
 
+			mPointerColor.setColor(currentColor);
+			mCenterNewPaint.setColor(currentColor);
+		} else {
+			mPointerColor.setColor(mCenterNewColor);
+			mCenterNewPaint.setColor(mCenterNewColor);
+		}
+		
 		// check of the instance isn't null
 		if (mOpacityBar != null) {
 			// set the value of the opacity
@@ -607,16 +621,21 @@ public class ColorPicker extends View {
 		return (float) Math.toRadians(-colors[0]);
 	}
 
-	private int[] desaturateColor(int[] color) {
-		int[] desaturatedColor = new int[color.length];
+	private int[] hsvAdjustColors(int[] color) {
+		int[] adjustedColors = new int[color.length];
 		for (int i = 0; i < color.length; i ++){
 			float[] colorHsv = new float[3];
 			Color.colorToHSV(color[i], colorHsv);
-			colorHsv[1] = desaturateFactor;
-			colorHsv[2] = valueFactor;
-			desaturatedColor[i] = Color.HSVToColor(colorHsv);
+			if (mIsEnabled) {
+				colorHsv[1] = mSaturateFactor;
+				colorHsv[2] = mValueFactor;
+			} else {
+				colorHsv[1] = 0;
+				colorHsv[2] = 0;
+			}
+			adjustedColors[i] = Color.HSVToColor(colorHsv);
 		}
-		return desaturatedColor;
+		return adjustedColors;
 	}
 
 	@Override
@@ -640,11 +659,7 @@ public class ColorPicker extends View {
 				mUserIsMovingPointer = true;
 
 				//Enable wheel upon touch
-				if (!isEnabled){
-					isEnabled = true;
-					Shader s = new SweepGradient(0, 0, COLORS, null);	
-					mColorWheelPaint.setShader(s);
-				}
+				setEnabled(true);
 
 				invalidate();
 			}
@@ -654,18 +669,14 @@ public class ColorPicker extends View {
 
 				mCenterHaloPaint.setAlpha(0x50);
 
-				changeStatus();
+				toggleEnabled();
 			}
 			// Handle click on the wheel
 			else if(x >= -mColorWheelRadius && x <= mColorWheelRadius
 					&& y >= -mColorWheelRadius && y <= mColorWheelRadius){
 
 				//Enable wheel upon touch
-				if (!isEnabled){
-					isEnabled = true;
-					Shader s = new SweepGradient(0, 0, COLORS, null);	
-					mColorWheelPaint.setShader(s);
-				}
+				setEnabled(true);
 
 				mAngle = (float) java.lang.Math.atan2(y, x);
 				pointerPosition = calculatePointerPosition(mAngle);
@@ -677,6 +688,8 @@ public class ColorPicker extends View {
 				int currentColor = calculateColor(mAngle);
 
 				mPointerColor.setColor(currentColor);
+				mCenterNewPaint.setColor(currentColor);
+
 				setCurrentColor(currentColor);
 
 				invalidate();		
@@ -694,6 +707,8 @@ public class ColorPicker extends View {
 				int currentColor = calculateColor(mAngle);
 
 				mPointerColor.setColor(currentColor);
+				mCenterNewPaint.setColor(currentColor);
+
 				setCurrentColor(currentColor);
 
 				invalidate();	
@@ -798,49 +813,56 @@ public class ColorPicker extends View {
 		mValueBar.setColor(mColor);
 	}
 
-	public void setDesaturateFactor(float f){
-		desaturateFactor = f;
-		if (!isEnabled){
-			Shader s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
-			mColorWheelPaint.setShader(s);
-			invalidate();
-		}
-	}
-	public void setValueFactor(float f){
-		valueFactor = f;
-		if (!isEnabled){
-			Shader s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
-			mColorWheelPaint.setShader(s);
-			invalidate();
-		}
-	}
 	public void setCenterImageOn(Bitmap b){
-		centerImageOn = b;
+		mCenterImageOn = b;
 	}
-	public void setCenterImageOff(Bitmap b){
-		centerImageOff = b;
-	}
-	public void changeStatus(){
-		//Disable or enable wheel
-		isEnabled = !isEnabled;
-		Shader s;
-		if (isEnabled){
-			s = new SweepGradient(0, 0, COLORS, null);
 
+	public void setCenterImageOff(Bitmap b){
+		mCenterImageOff = b;
+	}
+
+	public void setSaturateFactor(float f){
+		mSaturateFactor = f;
+		updateColorPicker();
+	}
+
+	public void setValueFactor(float f){
+		mValueFactor = f;
+		updateColorPicker();
+	}
+
+	public void toggleEnabled() {
+		setEnabled(!mIsEnabled);
+	}
+
+	public void setEnabled(boolean enabled) {
+		//Disable or enable wheel
+		mIsEnabled = enabled;
+
+		updateColorPicker();
+
+		if (mIsEnabled) {
+			setCurrentColor(calculateColor(mAngle));
+		} else {
+			setCurrentColor(mCenterNewColor);
+		}
+	}
+
+	void updateColorPicker() {
+		if (mIsEnabled) {
 			int currentColor = calculateColor(mAngle);
 
 			mPointerColor.setColor(currentColor);
-			setCurrentColor(currentColor);
-		}
-		else{
-			s = new SweepGradient(0, 0, desaturateColor(COLORS), null);
+			mCenterNewPaint.setColor(currentColor);
+		} else {
 			mPointerColor.setColor(mCenterNewColor);
-			setCurrentColor(mCenterNewColor);
+			mCenterNewPaint.setColor(mCenterNewColor);
 		}
+		Shader s = new SweepGradient(0, 0, hsvAdjustColors(COLORS), null);
 		mColorWheelPaint.setShader(s);
-
 		invalidate();
 	}
+
 	/**
 	 * Change the color of the center which indicates the new color.
 	 * 
@@ -860,6 +882,7 @@ public class ColorPicker extends View {
 		}
 		invalidate();
 	}
+
 	public void setCurrentColor(int color){
 		if (onColorChangedListener != null && color != oldChangedListenerColor) {
 			onColorChangedListener.onColorChanged(color);
@@ -940,7 +963,7 @@ public class ColorPicker extends View {
 	 * 
 	 * @return true or false.
 	 */
-	public boolean hasOpacityBar(){
+	public boolean hasOpacityBar() {
 		return mOpacityBar != null;
 	}
 
@@ -949,7 +972,7 @@ public class ColorPicker extends View {
 	 * 
 	 * @return true or false.
 	 */
-	public boolean hasValueBar(){
+	public boolean hasValueBar() {
 		return mValueBar != null;
 	}
 
@@ -958,7 +981,7 @@ public class ColorPicker extends View {
 	 * 
 	 * @return true or false.
 	 */
-	public boolean hasSaturationBar(){
+	public boolean hasSaturationBar() {
 		return mSaturationBar != null;
 	}
 
@@ -967,7 +990,7 @@ public class ColorPicker extends View {
 	 * 
 	 * @return true or false.
 	 */
-	public boolean hasSVBar(){
+	public boolean hasSVBar() {
 		return mSVbar != null;
 	}
 
