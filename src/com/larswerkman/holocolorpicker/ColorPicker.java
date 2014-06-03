@@ -378,6 +378,7 @@ public class ColorPicker extends View {
 		mColorWheelPaint.setStyle(Paint.Style.STROKE);
 		mColorWheelPaint.setStrokeWidth(mColorWheelThickness);
 
+
 		mPointerHaloPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 		mPointerHaloPaint.setColor(Color.BLACK);
 		mPointerHaloPaint.setAlpha(0x50);
@@ -417,17 +418,6 @@ public class ColorPicker extends View {
 		// Draw the color wheel
 		canvas.drawOval(mColorWheelRectangle, mColorWheelPaint);
 
-		float[] pointerPosition = calculatePointerPosition(mAngle);
-
-		// Draw the pointer's "halo"
-		canvas.drawCircle(pointerPosition[0], pointerPosition[1],
-				mColorPointerHaloRadius, mPointerHaloPaint);
-
-		// Draw the pointer (the currently selected color) slightly smaller on
-		// top.
-		canvas.drawCircle(pointerPosition[0], pointerPosition[1],
-				mColorPointerRadius, mPointerColor);
-
 		// Draw the halo of the center colors.
 		canvas.drawCircle(0, 0, mColorCenterHaloRadius, mCenterHaloPaint);
 
@@ -442,6 +432,17 @@ public class ColorPicker extends View {
 			// Draw the new selected color in the center.
 			canvas.drawArc(mCenterRectangle, 0, 360, true, mCenterNewPaint);
 		}
+		
+		float[] pointerPosition = calculatePointerPosition(mAngle);
+
+		// Draw the pointer's "halo"
+		canvas.drawCircle(pointerPosition[0], pointerPosition[1],
+				mColorPointerHaloRadius, mPointerHaloPaint);
+
+		// Draw the pointer (the currently selected color) slightly smaller on
+		// top.
+		canvas.drawCircle(pointerPosition[0], pointerPosition[1],
+				mColorPointerRadius, mPointerColor);
 
 		//Draw center image
 		if (mIsEnabled && mCenterImageOn != null){
@@ -489,10 +490,16 @@ public class ColorPicker extends View {
 		mColorWheelRectangle.set(-mColorWheelRadius, -mColorWheelRadius,
 				mColorWheelRadius, mColorWheelRadius);
 
-		mColorCenterRadius = (int) ((float) mPreferredColorCenterRadius * ((float) mColorWheelRadius / (float) mPreferredColorWheelRadius));
-		mColorCenterHaloRadius = (int) ((float) mPreferredColorCenterHaloRadius * ((float) mColorWheelRadius / (float) mPreferredColorWheelRadius));
+		mColorCenterRadius = mColorWheelRadius - mColorWheelThickness / 2;
+		mColorCenterHaloRadius = mColorCenterRadius +  mColorWheelThickness / 10;
+		
+		//Original Setting
+		//mColorCenterRadius = (int) ((float) mPreferredColorCenterRadius * ((float) mColorWheelRadius / (float) mPreferredColorWheelRadius));
+		//mColorCenterHaloRadius = (int) ((float) mPreferredColorCenterHaloRadius * ((float) mColorWheelRadius / (float) mPreferredColorWheelRadius));
+		
 		mCenterRectangle.set(-mColorCenterRadius, -mColorCenterRadius,
 				mColorCenterRadius, mColorCenterRadius);
+		
 	}
 
 	private int ave(int s, int d, float p) {
