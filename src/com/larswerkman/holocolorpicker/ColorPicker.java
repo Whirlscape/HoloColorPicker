@@ -23,6 +23,8 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffColorFilter;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.SweepGradient;
@@ -242,8 +244,7 @@ public class ColorPicker extends View {
 	private float mSaturateFactor = 1.0f;
 	private float mValueFactor = 1.0f;
 
-	private Bitmap mCenterImageOn = null;	
-	private Bitmap mCenterImageOff = null;
+	private Bitmap mCenterImage = null;	
 	
 	private Paint mBitmapPaint;
 
@@ -445,11 +446,8 @@ public class ColorPicker extends View {
 				mColorPointerRadius, mPointerColor);
 
 		//Draw center image
-		if (mIsEnabled && mCenterImageOn != null){
-			canvas.drawBitmap(mCenterImageOn, null, mCenterRectangle, mBitmapPaint);
-		}
-		else if (!mIsEnabled && mCenterImageOff != null){
-			canvas.drawBitmap(mCenterImageOff, null, mCenterRectangle, mBitmapPaint);
+		if (mIsEnabled && mCenterImage != null){
+			canvas.drawBitmap(mCenterImage, null, mCenterRectangle, mBitmapPaint);
 		}
 	}
 
@@ -831,12 +829,9 @@ public class ColorPicker extends View {
 		mValueBar.setColor(mColor);
 	}
 
-	public void setCenterImageOn(Bitmap b){
-		mCenterImageOn = b;
-	}
-
-	public void setCenterImageOff(Bitmap b){
-		mCenterImageOff = b;
+	public void setCenterImage(Bitmap b, int tint){
+		mCenterImage = b;
+		mBitmapPaint.setColorFilter(new PorterDuffColorFilter(tint, PorterDuff.Mode.MULTIPLY));
 	}
 
 	public void setSaturateFactor(float f){
