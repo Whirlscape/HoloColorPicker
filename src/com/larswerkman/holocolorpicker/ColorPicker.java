@@ -687,7 +687,8 @@ public class ColorPicker extends View {
 
 				mCenterHaloPaint.setAlpha(0x50);
 
-				toggleEnabled();
+				// toggleEnabled();
+				setEnabled(false); // Always turn off when you click the center
 			}
 			// Handle click on the wheel
 			else if(x >= -mColorWheelRadius && x <= mColorWheelRadius
@@ -879,12 +880,6 @@ public class ColorPicker extends View {
 		mColorWheelPaint.setShader(s);
 		invalidate();
 	}
-	
-	public void setCenterValue(float value){
-		mCenterNewColor = setValue(mCenterNewColor, value);
-		mCenterNewPaint.setColor(mCenterNewColor);
-	}
-
 
 	/**
 	 * Change the color of the center which indicates the new color.
@@ -901,7 +896,7 @@ public class ColorPicker extends View {
 		}
 		if (onColorChangedListener != null && color != oldChangedListenerColor) {
 			onColorChangedListener.onColorChanged(color);
-			oldChangedListenerColor  = color;
+			oldChangedListenerColor = color;
 		}
 		invalidate();
 	}
